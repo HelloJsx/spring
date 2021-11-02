@@ -45,3 +45,22 @@ spring核心代码实现
 
 4.在AbstractAutowireCapableBeanFactory类中创建策略调用，首先在AbstractAutowireCapableBeanFactory类中定义了一个创建对象实例化策略熟悉类InstantiationStrategy，这里我们选择CGLib，接下来注意createBeanInstance这个方法，在这个方法中需要注意Constructor代表有多少个构造函数，通过getDeclaredConstructors()可以获得所有的构造函数，是一个集合，接下来就需要循环对比出构造函数集合与入参信息args的匹配情况，这里我们对比的方式比较简单，只是一个数量对比，而实际上Spring源码中还需要对比入参类型，否则相同数量不同入参类型的情况就会抛出异常
 
+## 04
+
+> 目标
+
+​	解决类中是否有属性的问题，如果有类中包含属性那么在实例化的时候就要把属性信息天上，这样才是一个完整的对象创建，对于属性填充不只是String那些，还包括还没有实例化的对象属性，都需要在Bean创建的时候进行填充操作。
+
+> 设计
+
+1.属性填充要在类实例化创建之后，也就是需要在AbstractAutowireCapableBeanFactory 的 createBean 方法中添加 applyPropertyValues 操作。
+
+2.由于需要在创建Bean的时候填充属性操作，那么就需要再定义一个BeanDefinition类中添加PropertyValue信息
+
+3.填充属性信息还包括了Bean的对象类型，也就是需要再定义一个BeanReference，里面其实就是一个简单的Bean名称，再具体的实例化操作的时候进行递归创建和填充
+
+> 总结
+
+1.Bean注册的时候需要传递的信息为了把属性一定交给Bean定义，所以这里填充了PropertyValues属性，同时把两个构造函数做了一些简单的优化，避免后面for循环时还得判断属性填充是否为空
+
+2.在applyPropertyValues中，通过beanDefinition.getPropertyValues()循环进行属性填充操作，如果遇到的是BeanReference，那么就需要递归获取Bean实力，调用getBean方法当把依赖的Bean对象创建完成之后，会递归回到现在属性填充中，这里需要注意没有去处理循环依赖问题
